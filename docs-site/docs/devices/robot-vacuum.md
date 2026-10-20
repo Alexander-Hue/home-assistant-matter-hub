@@ -225,7 +225,7 @@ If your vacuum uses a separate `select.*` entity for suction control instead of 
 
 ## Mop Intensity (Apple Home Intensity Options)
 
-When your vacuum has mop intensity / water level options, HAMH adds mop intensity modes under the Mop cleaning type.
+When your vacuum supports mop-only cleaning, HAMH adds water-intensity modes under the Mop cleaning type. A combined-only device instead gets `Vacuum & Mop Low`, `Vacuum & Mop Medium` and `Vacuum & Mop High`, tagged for both vacuuming and mopping.
 
 ### Auto-Detection
 
@@ -253,7 +253,7 @@ Apple Home shows the same **Quiet / Automatic / Max** labels for mop intensity a
 
 ### Matter Spec Limitation: Vacuum & Mop Mode
 
-The Matter spec only allows a single `currentMode` value. When in "Vacuum & Mop" mode, HAMH cannot express both fan speed AND mop intensity simultaneously. The base mode is reported without intensity information.
+The Matter spec only allows a single `currentMode` value. When in "Vacuum & Mop" mode, HAMH cannot express both fan speed AND mop intensity simultaneously. For combined-only devices, HAMH reports the water-intensity variant (modes 50–52) while running in combined mode. Devices that also support mop-only keep the base combined mode without an intensity tag. If the cleaning select was unavailable at registration, commands still resolve against its actual live options: a requested Mop option falls back to the combined option when mop-only is unsupported.
 
 ---
 
