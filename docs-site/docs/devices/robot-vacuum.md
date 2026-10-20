@@ -577,3 +577,35 @@ Since v2.0.26, "Vacuum Then Mop" (shown as "Deep Clean" in Apple Home) falls bac
 ### Intensity options look the same for Vacuum and Mop mode
 
 This is an Apple Home limitation. Apple renders the same labels (Quiet / Automatic / Max) for both vacuum fan speed and mop intensity because both use the same Matter mode tags. The routing behind the labels is correct, selecting "Quiet" in Mop mode sets mop intensity, while "Quiet" in Vacuum mode sets fan speed.
+## Native Roborock operational errors
+
+The bridge reads the Roborock integration's `vacuum_error` enum sensor on the
+same Home Assistant device, including when that sensor is outside the Matter
+export filter. Detection uses registry metadata, so renamed sensors work. An
+explicit `faultEntity` mapping takes precedence; ambiguous automatic matches
+are left unmapped. The sensor must be enabled in Home Assistant. An explicit sensor can be selected in the vacuum mapping dialog under **Operational Error Sensor**, or sent as `faultEntity` through the mapping API.
+
+For an actual HA vacuum `error` state, known causes map to standard Matter
+RVC error codes, including LowBattery, WheelsJammed, BrushJammed,
+NavigationSensorObscured, FailedToFindChargingDock, Stuck and DustBinMissing. The detailed cause is included in `errorStateDetails`.
+`errorStateLabel` is reserved for manufacturer-specific codes and is omitted.
+Unknown causes use UnableToCompleteOperation. Unmapped vacuums retain their
+existing genuine-error fallback.
+
+These errors use the vacuum's native Matter operational-error event. The
+controller determines notification availability and wording. A normal return
+to charge, an offline device, maintenance counters, or a missing optional mop
+attachment do not create a fabricated operational error. Recovering from an
+error clears the error attribute.
+
+
+Operational faults wait up to 500 ms on the initial error transition so a
+slightly later Roborock error-sensor update is included in the first error and
+completion report. If details remain missing, the bridge reports a generic
+fault after this bounded settling period. Later cause changes update the fault
+without repeating completion. Recovery cancels a pending error report.
+An unavailable vacuum reports Stopped with NoError, rather than the inconsistent
+Error/NoError pair; it does not emit an operation-completion event.
+The mapping also includes the library's dock, tank, wash-roller and tray errors
+34–56. Only an explicit clean-water-empty code is classified as WaterTankEmpty;
+ambiguous dock causes retain a generic native code with the precise details.
