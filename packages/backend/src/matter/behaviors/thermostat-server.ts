@@ -21,6 +21,10 @@ import { transactionIsOffline } from "../../utils/transaction-is-offline.js";
 // Prevents the nudge itself from triggering auto-resume in $Changing handlers.
 const nudgingSetpoints = new Set<string>();
 
+// Entity IDs whose auto-resume already sent the mode change to HA (#519).
+// The systemMode$Changed reactor consumes the entry and skips the duplicate.
+const autoResuming = new Map<string, SystemMode>();
+
 /**
  * Nudge a setpoint by +1 centidegree (0.01°C) so that any controller write
  * of the "real" value produces a value change and triggers $Changing.
@@ -633,14 +637,7 @@ export class ThermostatServerBase extends FullFeaturedBase {
             );
             return;
           }
-          logger.info(
-            `heatingSetpointChanging: auto-resume - switching to Heat (was Off)`,
-          );
-          const modeAction = config.setSystemMode(
-            Thermostat.SystemMode.Heat,
-            this.agent,
-          );
-          homeAssistant.callAction(modeAction);
+          this.autoResumeFromOff(SystemMode.Heat, "heatingSetpointChanging");
           // Proceed to forward the temperature to HA below.
         } else if (!isAutoMode && !isHeatingMode) {
           // In Auto mode: heating setpoint updates temperature (cooling setpoint is ignored)
@@ -708,8 +705,9 @@ export class ThermostatServerBase extends FullFeaturedBase {
           currentMode === Thermostat.SystemMode.Precooling;
         const isOff = currentMode === Thermostat.SystemMode.Off;
 
-        if (isOff && !this.features.heating && this.features.cooling) {
-          // Auto-resume (#176): controller wrote a cooling setpoint while Off.
+        if (isOff && this.features.cooling) {
+          // Auto-resume (#176, #519): controller wrote a cooling setpoint while
+          // Off. #519: also on heat+cool devices, those writes were dropped.
           // The nudge in update() ensures $Changing fires even for same-value writes.
           // Skip if this $Changing was caused by the nudge itself (not a controller write).
           if (nudgingSetpoints.has(homeAssistant.entityId)) {
@@ -718,14 +716,7 @@ export class ThermostatServerBase extends FullFeaturedBase {
             );
             return;
           }
-          logger.info(
-            `coolingSetpointChanging: auto-resume - switching to Cool (was Off)`,
-          );
-          const modeAction = config.setSystemMode(
-            Thermostat.SystemMode.Cool,
-            this.agent,
-          );
-          homeAssistant.callAction(modeAction);
+          this.autoResumeFromOff(SystemMode.Cool, "coolingSetpointChanging");
           // Proceed to forward the temperature to HA below.
         } else if (!isAutoMode && !isCoolingMode) {
           // In Auto mode: BOTH heating and cooling setpoint should update temperature (#71)
@@ -775,6 +766,48 @@ export class ThermostatServerBase extends FullFeaturedBase {
     homeAssistant.callAction(action);
   }
 
+  // Auto-resume from Off (#176, #519): send the mode to HA and optimistically
+  // set systemMode so controllers stop reading Off until HA confirms (Alexa
+  // answers "not responding" whenever systemMode reads Off). The state write
+  // also makes the sibling setpoint handler see a non-Off mode within the same
+  // transaction, so writing both setpoints at once resumes exactly once: the
+  // first attribute in the write picks the mode (intent is ambiguous while
+  // Off, so first-wins is the pinned rule, asserted in the #519 bringup test).
+  private autoResumeFromOff(preferred: SystemMode, source: string) {
+    const homeAssistant = this.agent.get(HomeAssistantEntityBehavior);
+    const resumeMode = this.resumeModeFor(preferred);
+    logger.info(
+      `${source}: auto-resume - switching to ${SystemMode[resumeMode]} (was Off)`,
+    );
+    // State write first: if it throws, no HA side effect happened yet.
+    this.state.systemMode = resumeMode;
+    autoResuming.set(homeAssistant.entityId, resumeMode);
+    homeAssistant.callAction(
+      this.state.config.setSystemMode(resumeMode, this.agent),
+    );
+  }
+
+  // Flip to the sibling mode when controlSequenceOfOperation forbids the
+  // preferred one; matter.js asserts the same table on systemMode$Changing.
+  private resumeModeFor(preferred: SystemMode): SystemMode {
+    // biome-ignore lint/suspicious/noExplicitAny: Access protected internal state from Matter.js base
+    const cso = (this as any).internal.controlSequenceOfOperation;
+    const Cso = Thermostat.ControlSequenceOfOperation;
+    if (
+      preferred === SystemMode.Heat &&
+      (cso === Cso.CoolingOnly || cso === Cso.CoolingAndHeatingWithReheat)
+    ) {
+      return SystemMode.Cool;
+    }
+    if (
+      preferred === SystemMode.Cool &&
+      (cso === Cso.HeatingOnly || cso === Cso.HeatingWithReheat)
+    ) {
+      return SystemMode.Heat;
+    }
+    return preferred;
+  }
+
   // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Called via thermostatPostInitialize + prototype copy
   private systemModeChanged(
     systemMode: Thermostat.SystemMode,
@@ -787,6 +820,14 @@ export class ThermostatServerBase extends FullFeaturedBase {
     // Use asLocalActor to avoid access control issues when accessing HomeAssistantEntityBehavior
     this.agent.asLocalActor(() => {
       const homeAssistant = this.agent.get(HomeAssistantEntityBehavior);
+      // Always consume a pending auto-resume entry; skip only on a match so a
+      // stale entry can never swallow a different mode change (#519).
+      const expected = autoResuming.get(homeAssistant.entityId);
+      autoResuming.delete(homeAssistant.entityId);
+      if (expected === systemMode) {
+        // The setpoint auto-resume already sent this mode to HA.
+        return;
+      }
       const action = this.state.config.setSystemMode(systemMode, this.agent);
       homeAssistant.callAction(action);
     });
