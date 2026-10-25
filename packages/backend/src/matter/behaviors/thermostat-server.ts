@@ -15,6 +15,7 @@ import SystemMode = Thermostat.SystemMode;
 import RunningMode = Thermostat.ThermostatRunningMode;
 
 import type { ActionContext } from "@matter/main";
+import { StatusCode, StatusResponseError } from "@matter/main/types";
 import { transactionIsOffline } from "../../utils/transaction-is-offline.js";
 
 // Tracks entity IDs currently receiving a nudge write from update().
@@ -323,6 +324,7 @@ async function thermostatPostInitialize(self: any): Promise<void> {
   const homeAssistant = await self.agent.load(HomeAssistantEntityBehavior);
   self.update(homeAssistant.entity);
 
+  self.reactTo(self.events.systemMode$Changing, self.systemModeChanging);
   self.reactTo(self.events.systemMode$Changed, self.systemModeChanged);
   // Use $Changing (pre-commit) for setpoint changes to avoid access control issues
   // The $Changed event fires in post-commit where we lose write permissions
@@ -806,6 +808,31 @@ export class ThermostatServerBase extends FullFeaturedBase {
       return SystemMode.Heat;
     }
     return preferred;
+  }
+
+  // climateBlockOff (#527): refuse Off from controllers. Off is an optional
+  // SystemMode value, so ConstraintError is the spec answer. Apple's Matter
+  // framework drops its expected Off on a failed write; after an accepted one
+  // it filters our reports until that expected value times out.
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Called via thermostatPostInitialize + prototype copy
+  private systemModeChanging(
+    systemMode: Thermostat.SystemMode,
+    _oldValue: Thermostat.SystemMode,
+    context?: ActionContext,
+  ) {
+    if (
+      transactionIsOffline(context) ||
+      (systemMode !== SystemMode.Off && systemMode !== SystemMode.Sleep)
+    ) {
+      return;
+    }
+    const homeAssistant = this.agent.get(HomeAssistantEntityBehavior);
+    if (homeAssistant.state.mapping?.climateBlockOff === true) {
+      throw new StatusResponseError(
+        `${SystemMode[systemMode]} is blocked for this thermostat (climateBlockOff)`,
+        StatusCode.ConstraintError,
+      );
+    }
   }
 
   // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Called via thermostatPostInitialize + prototype copy

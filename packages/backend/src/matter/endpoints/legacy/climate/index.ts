@@ -173,11 +173,13 @@ export function ClimateDevice(
     attributes.current_humidity != null ||
     testBit(supportedFeatures, ClimateDeviceFeature.TARGET_HUMIDITY);
   // Per-entity opt-out: skip OnOff so room-level "off" voice commands don't
-  // turn the thermostat off alongside the lights.
+  // turn the thermostat off alongside the lights. climateBlockOff skips it
+  // too, Apple's power button would otherwise use OnOff.off (#527).
   const supportsOnOff =
     testBit(supportedFeatures, ClimateDeviceFeature.TURN_ON) &&
     testBit(supportedFeatures, ClimateDeviceFeature.TURN_OFF) &&
-    homeAssistantEntity.mapping?.disableClimateOnOff !== true;
+    homeAssistantEntity.mapping?.disableClimateOnOff !== true &&
+    homeAssistantEntity.mapping?.climateBlockOff !== true;
   // Per-entity opt-out: skip FanControl + RoomAirConditionerDevice and fall
   // back to ThermostatDevice. Workaround for controllers (e.g. Aqara) that
   // don't recognise device type 0x0072 and drop the endpoint (#318).

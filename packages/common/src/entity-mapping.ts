@@ -430,6 +430,14 @@ export interface EntityMappingConfig {
    */
   readonly climateForceTurnOn?: boolean;
   /**
+   * Optional: Refuse Off from Matter controllers for this climate entity, and
+   * skip the OnOff cluster. Apple Home always shows a power button on
+   * thermostats; with this set a tap on it does nothing and the entity keeps
+   * its mode, e.g. a Wiser room stays on its schedule (#527). Off set in HA
+   * itself is still shown.
+   */
+  readonly climateBlockOff?: boolean;
+  /**
    * Optional: Expose a second Matter Fan device alongside this climate AC,
    * bound to the same HA entity. Apple Home does not surface a thermostat
    * fan / fan_only mode, so this companion Fan tile turns the AC's fan_only
@@ -561,6 +569,7 @@ export interface EntityMappingRequest {
   readonly disableClimateFanControl?: boolean;
   readonly climateKeepModeOnIdle?: boolean;
   readonly climateForceTurnOn?: boolean;
+  readonly climateBlockOff?: boolean;
   readonly climateExposeFan?: boolean;
   readonly climateAutoMode?: ClimateAutoMode;
   readonly composedEntities?: ComposedSubEntity[];

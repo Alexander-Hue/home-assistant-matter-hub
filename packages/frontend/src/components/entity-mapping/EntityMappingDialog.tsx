@@ -189,6 +189,7 @@ export function EntityMappingDialog({
     useState(false);
   const [climateKeepModeOnIdle, setClimateKeepModeOnIdle] = useState(false);
   const [climateForceTurnOn, setClimateForceTurnOn] = useState(false);
+  const [climateBlockOff, setClimateBlockOff] = useState(false);
   const [climateExposeFan, setClimateExposeFan] = useState(false);
   const [fanRestoreSpeedOnPowerOn, setFanRestoreSpeedOnPowerOn] =
     useState(false);
@@ -323,6 +324,7 @@ export function EntityMappingDialog({
       );
       setClimateKeepModeOnIdle(currentMapping?.climateKeepModeOnIdle || false);
       setClimateForceTurnOn(currentMapping?.climateForceTurnOn || false);
+      setClimateBlockOff(currentMapping?.climateBlockOff || false);
       setClimateExposeFan(currentMapping?.climateExposeFan || false);
       setFanRestoreSpeedOnPowerOn(
         currentMapping?.fanRestoreSpeedOnPowerOn || false,
@@ -478,6 +480,7 @@ export function EntityMappingDialog({
       disableClimateFanControl: disableClimateFanControl || undefined,
       climateKeepModeOnIdle: climateKeepModeOnIdle || undefined,
       climateForceTurnOn: climateForceTurnOn || undefined,
+      climateBlockOff: climateBlockOff || undefined,
       climateExposeFan: climateExposeFan || undefined,
       fanRestoreSpeedOnPowerOn: fanRestoreSpeedOnPowerOn || undefined,
       climateAutoMode: climateAutoMode || undefined,
@@ -548,6 +551,7 @@ export function EntityMappingDialog({
     disableClimateFanControl,
     climateKeepModeOnIdle,
     climateForceTurnOn,
+    climateBlockOff,
     climateExposeFan,
     fanRestoreSpeedOnPowerOn,
     climateAutoMode,
@@ -1701,6 +1705,16 @@ export function EntityMappingDialog({
                 />
               }
               label="Always send climate.turn_on (for IR controlled ACs, where Home Assistant can report on while the device is off)"
+              sx={{ mt: 1, display: "block" }}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={climateBlockOff}
+                  onChange={(e) => setClimateBlockOff(e.target.checked)}
+                />
+              }
+              label="Refuse Off from Matter controllers (the entity keeps its mode, e.g. a heating schedule; changing the temperature still works)"
               sx={{ mt: 1, display: "block" }}
             />
             <FormControlLabel
