@@ -60,6 +60,14 @@ interface AllBridgeFeatureFlags {
    */
   readonly productNameFromNodeLabel: boolean;
   /**
+   * Product Name from Model: Report the Home Assistant device model (e.g.
+   * "Smart Lock Pro") as the Matter productName instead of the model_id
+   * (e.g. "178"). Apple Home shows productName as the model.
+   * customProductName and productNameFromNodeLabel still take precedence.
+   * Default: false (disabled)
+   */
+  readonly productNameFromModel: boolean;
+  /**
    * Prefer Entity Registry Name: Use the entity registry name (or original_name)
    * as nodeLabel instead of the composed friendly_name. Since Home Assistant
    * 2026.4, friendly_name is prefixed with the device name, which breaks voice

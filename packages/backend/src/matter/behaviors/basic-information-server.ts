@@ -79,6 +79,9 @@ export class BasicInformationServer extends Base {
       productName:
         ellipse(32, mapping?.customProductName) ??
         productNameFromNodeLabel ??
+        (featureFlags?.productNameFromModel
+          ? ellipse(32, device?.model)
+          : undefined) ??
         ellipse(32, device?.model_id) ??
         ellipse(32, device?.model) ??
         hash(32, basicInformation.productName),

@@ -253,6 +253,16 @@ const featureFlagSchema: JSONSchema7 = {
       default: false,
     },
 
+    productNameFromModel: {
+      title: "Product Name from Model",
+      description:
+        "Report the Home Assistant device model (e.g. Smart Lock Pro) as the Matter productName " +
+        "instead of the model_id (e.g. 178). Apple Home shows productName as the model. " +
+        "A per-entity customProductName and productNameFromNodeLabel still take precedence.",
+      type: "boolean",
+      default: false,
+    },
+
     preferEntityRegistryName: {
       title: "Prefer Entity Registry Name (HA 2026.4 workaround)",
       description:

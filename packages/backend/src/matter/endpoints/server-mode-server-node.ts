@@ -151,6 +151,9 @@ export class ServerModeServerNode extends ServerNode {
       productName:
         trimToLength(mapping?.customProductName, 32, "...") ??
         productNameFromNodeLabel ??
+        (this.featureFlags?.productNameFromModel
+          ? trimToLength(device?.model, 32, "...")
+          : undefined) ??
         trimToLength(device?.model_id, 32, "...") ??
         trimToLength(device?.model, 32, "..."),
       productLabel: trimToLength(device?.model, 64, "..."),
