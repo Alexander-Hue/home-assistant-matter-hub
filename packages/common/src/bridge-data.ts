@@ -151,6 +151,8 @@ interface AllBridgeFeatureFlags {
    * blind session rotation would. Targets the Apple "Updating" wedge where the
    * controller keeps acking pushed reports but stops consuming data. A false
    * positive costs only a transparent re-CASE, the same as blind rotation.
+   * Not for Google Home: Google hubs send no requests between subscriptions,
+   * so it rotates a healthy session about every 50min (#526).
    * Default: false (disabled)
    */
   readonly wedgeWatchdog: boolean;

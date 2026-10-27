@@ -418,7 +418,9 @@ const featureFlagSchema: JSONSchema7 = {
         "stuck on 'Updating' and Alexa bridges whose devices all go " +
         "unresponsive while the session keeps acking. A false positive only " +
         "triggers a transparent reconnect, the same as normal rotation. " +
-        "Default off.",
+        "Not meant for Google Home: Google hubs only subscribe and send no " +
+        "requests in between, so the rule would rotate a healthy session " +
+        "about every 50 minutes. Default off.",
       type: "boolean",
       default: false,
     },
