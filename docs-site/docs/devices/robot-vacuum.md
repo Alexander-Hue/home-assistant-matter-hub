@@ -199,23 +199,55 @@ After this setup, Apple Home will show Vacuum, Mop, Vacuum & Mop, and Deep Clean
 
 ## Suction Level / Fan Speed (Apple Home Intensity Options)
 
-When your vacuum has fan speed options, HAMH creates extra intensity modes that Apple Home shows as selectable options under the Vacuum cleaning type.
+When your vacuum has fan speed options, HAMH creates extra intensity modes. Apple Home can show them under the Vacuum cleaning type according to the semantic tags it recognizes.
 
 ### Auto-Detection
 
 Fan speed support is **automatically detected** from the vacuum's `fan_speed_list` attribute. No manual configuration is needed.
 
-### Apple Home Display Limitations
+### Apple Home Labels and Automatic Tag Selection
 
-Apple Home only supports **3 intensity buckets** for RVC cleaning modes: **Quiet**, **Automatic**, and **Max**. HAMH creates modes for all your fan speeds but Apple Home renders only one option per intensity tag:
+HAMH's default automatic fan mapping uses **Quiet**, **Automatic**, and **Max**.
+This is not a three-option limit in Apple Home. Mode IDs and labels alone do
+not guarantee separate Home choices; the semantic mode tags matter. To avoid
+ambiguous choices, this mapping selects one automatic representative per tag:
 
-| Your Fan Speed | Apple Home Label | Matter Tag |
-|----------------|-----------------|------------|
-| quiet, silent, gentle | Quiet | Quiet |
-| balanced, standard, normal, auto | Automatic | Auto |
-| turbo, strong, max | Max | Max |
+| Intensity | Preferred automatic representative |
+|-----------|------------------------------------|
+| Quiet | quiet, then silent, otherwise the first matching quiet alias |
+| Automatic | auto, then balanced, then normal, otherwise the first matching alias |
+| Max | max_plus, then max+, max, turbo, otherwise the first matching strong alias |
 
-Fan speeds that don't match any tag pattern (e.g., "off", "custom", "max_plus") are hidden in Apple Home but still functional via other controllers.
+Only one fan speed gets each intensity tag, whatever the order of the list or
+extra off/custom options. All fan speeds keep their mode and the Vacuum tag, so
+the current mode is still reported when the robot runs one of the others (for
+example Turbo or Gentle). Apple Home may not offer those other speeds as a
+choice.
+
+:::note
+Earlier versions gave every matching speed the tag. Some speeds now lose it, for
+example Dreame `strong` (Max goes to `turbo`), Ecovacs and Roborock `max` (Max
+goes to `max_plus`) and Roborock `medium`/`gentle`. A saved Custom Tag Mapping
+now takes its tag away from the automatic match instead of adding a second one.
+Use a Custom Tag Mapping to choose which speed Apple Home uses for a bucket.
+:::
+
+Additional standard tags include **Min (6)** for the lowest available setting
+and **DeepClean (16384)** for a mode optimized for improved cleaning. They are
+not successive points on a single suction scale: Deep Clean is not defined as
+stronger than Max. See the [Matter mode definitions](https://csa-iot.org/wp-content/uploads/2024/05/matter-application-cluster-specification.pdf),
+sections 1.10.8 and 7.3.7.2.
+
+Native Home choices for Min, Max, Quiet and Deep Clean were observed on iOS 27
+with a separately configured S5 Max bridge. This is a controller-compatibility
+observation, not verification that untagged aliases remain individually
+selectable. Check the presentation and routing of your device's own mapping.
+
+Explicit `customFanSpeedTags` can use these standard tags when they accurately
+describe a device's modes. Choose their meaning per device; this change does
+not automatically relabel Turbo as Deep Clean or Gentle as Min for every
+vacuum. Home supplies the localized display names; personal suction/water
+pairings require their own profile implementation.
 
 ### Manual Override (suctionLevelEntity)
 
@@ -239,7 +271,7 @@ Mop intensity entities are **automatically detected** for Dreame and Ecovacs vac
 
 ### Apple Home Intensity Labels
 
-Apple Home shows the same **Quiet / Automatic / Max** labels for mop intensity as it does for fan speed, this is an Apple limitation. The labels come from Matter mode tags, not from HAMH. Behind the scenes, the routing is correct:
+With HAMH's default mop tags, Apple Home uses the same **Quiet / Automatic / Max** labels as for fan speed. These native labels come from the semantic tags and are not a limit on the number of modes the controller can render. Behind the scenes, the routing is:
 
 | Apple Home Label | Mop Intensity Action |
 |-----------------|---------------------|
