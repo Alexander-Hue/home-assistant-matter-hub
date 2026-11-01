@@ -543,6 +543,9 @@ on the same device, including when the sensor was renamed or is outside the
 Matter export filter. Enable the sensor in Home Assistant; missing or ambiguous
 matches keep the existing behavior. The automatically resolved dependency is
 not written to the saved entity mapping or exported as another accessory.
+HAMH looks the sensor up when it creates the vacuum device, so after enabling
+or renaming the sensor restart the add-on or container. Restarting a single
+bridge keeps the existing vacuum device and does not pick up the change.
 
 With this job signal, the run mode stays Cleaning while returning and charging.
 The operational state reports SeekingCharger during the return, then Paused at

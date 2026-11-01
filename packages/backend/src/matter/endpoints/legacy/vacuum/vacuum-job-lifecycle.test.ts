@@ -469,6 +469,19 @@ describe("job sensor availability", () => {
     await update(endpoint, "docked");
     expect(done).toHaveLength(1);
   });
+  it.each([
+    true,
+    false,
+  ])("does not send the robot home while it is docked (job %s)", async (withJob) => {
+    job = "on";
+    const endpoint = await mount("cleaning", withJob);
+    await update(endpoint, "docked");
+    await endpoint.act(async (agent) => {
+      // biome-ignore lint/suspicious/noExplicitAny: drive the controller command
+      await (agent as any).rvcOperationalState.goHome();
+    });
+    expect(actions).toEqual([]);
+  });
 });
 
 describe.each([

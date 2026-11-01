@@ -225,10 +225,14 @@ class RvcOperationalStateServerBase extends Base.enable({
   }
 
   override goHome(): RvcOperationalState.OperationalCommandResponse {
-    // Already docked or charging - command is valid but no-op
+    // Already docked or charging - command is valid but no-op. A job paused
+    // at the dock for a recharge reports Paused while HA says docked.
+    const haState = this.agent.get(HomeAssistantEntityBehavior).entity.state
+      .state;
     if (
       this.state.operationalState === OperationalState.Docked ||
-      this.state.operationalState === OperationalState.Charging
+      this.state.operationalState === OperationalState.Charging ||
+      haState === "docked"
     ) {
       return {
         commandResponseState: {
