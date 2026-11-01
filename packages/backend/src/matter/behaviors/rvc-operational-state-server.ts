@@ -1,5 +1,5 @@
 import type { HomeAssistantEntityInformation } from "@home-assistant-matter-hub/common";
-import { Logger } from "@matter/general";
+import { Logger, Seconds, type Timer } from "@matter/general";
 import { RvcOperationalStateServer as Base } from "@matter/main/behaviors/rvc-operational-state";
 import { RvcOperationalState } from "@matter/main/clusters/rvc-operational-state";
 import { applyPatchState } from "../../utils/apply-patch-state.js";
@@ -21,6 +21,7 @@ const activeStates = new Set([
 // Last state Home Assistant reported, per endpoint. A controller start shows
 // Running before HA confirms it (#496), that is no finished job.
 const haStates = new WeakMap<object, OperationalState>();
+const errorTimers = new WeakMap<object, Timer>();
 
 // Operational states to advertise in operationalStateList.
 // Only include the well-established states from the base OperationalState
@@ -49,6 +50,8 @@ export function makeRvcOperationalError(
 
 export interface RvcOperationalStateServerConfig {
   getOperationalState: ValueGetter<OperationalState>;
+  getOperationalError?: ValueGetter<RvcOperationalState.ErrorStateStruct>;
+  getOperationalErrorSettleMs?: ValueGetter<number>;
   pause: ValueSetter<void>;
   resume: ValueSetter<void>;
   goHome?: ValueSetter<void>;
@@ -91,6 +94,28 @@ class RvcOperationalStateServerBase extends Base.enable({
   }
 
   private update(entity: HomeAssistantEntityInformation) {
+    this.applyEntityState(entity, false);
+  }
+
+  private flushPendingError() {
+    errorTimers.delete(this.endpoint);
+    this.applyEntityState(
+      this.agent.get(HomeAssistantEntityBehavior).entity,
+      true,
+    );
+  }
+
+  override async [Symbol.asyncDispose]() {
+    errorTimers.get(this.endpoint)?.stop();
+    errorTimers.delete(this.endpoint);
+    haStates.delete(this.endpoint);
+    await super[Symbol.asyncDispose]();
+  }
+
+  private applyEntityState(
+    entity: HomeAssistantEntityInformation,
+    errorSettled: boolean,
+  ) {
     if (!entity.state || !entity.state.attributes) {
       return;
     }
@@ -99,13 +124,42 @@ class RvcOperationalStateServerBase extends Base.enable({
       this.agent,
     );
     const previousState = haStates.get(this.endpoint);
+    const settleMs =
+      this.state.config.getOperationalErrorSettleMs?.(
+        entity.state,
+        this.agent,
+      ) ?? 0;
+    if (
+      newState === OperationalState.Error &&
+      previousState !== undefined &&
+      previousState !== OperationalState.Error &&
+      settleMs > 0 &&
+      !errorSettled
+    ) {
+      if (!errorTimers.has(this.endpoint)) {
+        errorTimers.set(
+          this.endpoint,
+          this.reactorTimer(
+            "operational-error-settle",
+            Seconds(settleMs / 1000),
+            this.flushPendingError,
+            { offline: true, lock: true },
+          ).start(),
+        );
+      }
+      return;
+    }
+    errorTimers.get(this.endpoint)?.stop();
+    errorTimers.delete(this.endpoint);
     haStates.set(this.endpoint, newState);
 
     const errorStateId =
       newState === OperationalState.Error
         ? ErrorState.Stuck
         : ErrorState.NoError;
-    const operationalError = makeRvcOperationalError(errorStateId);
+    const operationalError =
+      this.state.config.getOperationalError?.(entity.state, this.agent) ??
+      makeRvcOperationalError(errorStateId);
 
     applyPatchState(
       this.state,
@@ -120,7 +174,7 @@ class RvcOperationalStateServerBase extends Base.enable({
     // Emit OperationCompletion event when transitioning from an active state
     // (Running, SeekingCharger, Paused) to Docked, Stopped or Error.
     // Required on the RoboticVacuumCleaner device type.
-    // Unavailable maps to Error with no finished job.
+    // An unavailable or unknown device has no confirmed finished job.
     const offline =
       entity.state.state === "unavailable" || entity.state.state === "unknown";
     const complete =
@@ -137,7 +191,7 @@ class RvcOperationalStateServerBase extends Base.enable({
           {
             completionErrorCode:
               newState === OperationalState.Error
-                ? ErrorState.Stuck
+                ? operationalError.errorStateId
                 : ErrorState.NoError,
             totalOperationalTime: null,
             pausedTime: null,
