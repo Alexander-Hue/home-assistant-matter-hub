@@ -589,8 +589,9 @@ For an actual HA vacuum `error` state, known causes map to standard Matter
 RVC error codes, including LowBattery, WheelsJammed, BrushJammed,
 NavigationSensorObscured, FailedToFindChargingDock, Stuck and DustBinMissing. The detailed cause is included in `errorStateDetails`.
 `errorStateLabel` is reserved for manufacturer-specific codes and is omitted.
-Unknown causes use UnableToCompleteOperation. Unmapped vacuums retain their
-existing genuine-error fallback.
+Unknown causes use UnableToCompleteOperation, including a Roborock error sensor
+that reads none, unavailable or an unlisted value. Vacuums without an error
+sensor keep the Stuck fallback.
 
 These errors use the vacuum's native Matter operational-error event. The
 controller determines notification availability and wording. A normal return
@@ -603,9 +604,12 @@ Operational faults wait up to 500 ms on the initial error transition so a
 slightly later Roborock error-sensor update is included in the first error and
 completion report. If details remain missing, the bridge reports a generic
 fault after this bounded settling period. Later cause changes update the fault
-without repeating completion. Recovery cancels a pending error report.
+without repeating completion. Recovery cancels a pending error report. An
+error already present when the bridge starts is reported at once.
 An unavailable vacuum reports Stopped with NoError, rather than the inconsistent
-Error/NoError pair; it does not emit an operation-completion event.
+Error/NoError pair; it does not emit an operation-completion event. A vacuum
+that returns from unavailable still in error sends the operational-error event
+again.
 The mapping also includes the library's dock, tank, wash-roller and tray errors
-34–56. Only an explicit clean-water-empty code is classified as WaterTankEmpty;
+34-56. Only an explicit clean-water-empty code is classified as WaterTankEmpty;
 ambiguous dock causes retain a generic native code with the precise details.

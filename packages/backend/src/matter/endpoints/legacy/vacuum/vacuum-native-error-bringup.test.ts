@@ -82,8 +82,8 @@ function vacuum(state: string): HomeAssistantEntityInformation {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function mount() {
-  const type = createLegacyEndpointType(vacuum("docked"), {
+async function mount(initial = "docked") {
+  const type = createLegacyEndpointType(vacuum(initial), {
     entityId: "vacuum.robot",
     faultEntity: "sensor.robot_error",
   });
@@ -198,6 +198,19 @@ describe("native vacuum operational errors", () => {
     await haState(endpoint, "error");
     expect(errors).toEqual([66]);
     expect(done).toEqual([66]);
+  });
+  it("reports an error present at creation without settling", async () => {
+    fault = "no_dustbin";
+    const endpoint = await mount("error");
+    expect(operationalState(endpoint)).toBe(OperationalState.Error);
+    expect(errorState(endpoint).errorStateId).toBe(66);
+    const errors: unknown[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: actual native events
+    (endpoint.events as any).rvcOperationalState.operationalError.on(
+      (event: unknown) => errors.push(event),
+    );
+    await delay(650);
+    expect(errors).toEqual([]);
   });
   it("reports a bounded generic fault if details never arrive", async () => {
     const endpoint = await mount();

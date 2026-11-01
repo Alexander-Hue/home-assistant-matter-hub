@@ -127,6 +127,7 @@ class RvcOperationalStateServerBase extends Base.enable({
       ) ?? 0;
     if (
       newState === OperationalState.Error &&
+      previousState !== undefined &&
       previousState !== OperationalState.Error &&
       settleMs > 0 &&
       !errorSettled
