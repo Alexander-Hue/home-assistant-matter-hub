@@ -104,6 +104,7 @@ Many routers, access points, and managed switches have features that **filter, t
 | **Ubiquiti UniFi APs** | IGMP Snooping can filter mDNS | Disable IGMP Snooping or enable mDNS Reflector |
 | **Managed Switches** (various) | Multicast filtering enabled by default | Allow mDNS multicast groups |
 | **Mesh Wi-Fi systems** | Some implementations isolate multicast between nodes | Check for multicast/mDNS settings, consider wired backhaul |
+| **Linksys Velop** (and other routers with "Express Forwarding") | Google Home on Android finds the bridge but never connects to port 5540 | Disable Express Forwarding ([#393](https://github.com/RiDDiX/home-assistant-matter-hub/issues/393), [#523](https://github.com/RiDDiX/home-assistant-matter-hub/issues/523)) |
 
 ### mDNS Network Interface Binding
 
