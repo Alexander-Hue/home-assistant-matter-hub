@@ -90,7 +90,7 @@ To find the correct select entity, look in Home Assistant for a `select.*` entit
 
 ### Creating a Cleaning Mode Helper (Roborock & Others)
 
-Some integrations (notably the official Roborock integration) **do not expose a cleaning mode select entity**. Without one, HAMH cannot switch between vacuum, mop, and vacuum+mop modes.
+Some integrations **do not expose a cleaning mode select entity**. Without one, HAMH cannot switch between vacuum, mop, and vacuum+mop modes. The official Roborock integration adds a `Cleaning mode` select since Home Assistant 2026.8. HAMH detects it when its entity ID contains `cleaning_mode`, otherwise set it as the Cleaning Mode Entity. On older Home Assistant versions, create a helper as shown below.
 
 You can create one yourself using Home Assistant helpers and automations:
 
@@ -253,7 +253,7 @@ Apple Home shows the same **Quiet / Automatic / Max** labels for mop intensity a
 
 ### Matter Spec Limitation: Vacuum & Mop Mode
 
-The Matter spec only allows a single `currentMode` value. When in "Vacuum & Mop" mode, HAMH cannot express both fan speed AND mop intensity simultaneously. For combined-only devices, HAMH reports the water-intensity variant (modes 50–52) while running in combined mode. Devices that also support mop-only keep the base combined mode without an intensity tag. If the cleaning select was unavailable at registration, commands still resolve against its actual live options: a requested Mop option falls back to the combined option when mop-only is unsupported.
+The Matter spec only allows a single `currentMode` value. When in "Vacuum & Mop" mode, HAMH cannot express both fan speed AND mop intensity simultaneously. For combined-only devices, HAMH reports the water-intensity variant (modes 50-52) while running in combined mode. Devices that also support mop-only keep the base combined mode without an intensity tag. If the cleaning select was unavailable at registration, commands still resolve against its actual live options: a requested Mop option falls back to the combined option when mop-only is unsupported.
 
 ---
 
@@ -339,7 +339,11 @@ Since v2.0.25, HAMH **automatically detects Roborock rooms** via the `roborock.g
 
 The startup log will show: `Auto-detected X Roborock rooms`
 
-**What's NOT auto-detected:** The Roborock integration does not expose a cleaning mode entity. If you want vacuum/mop/vacuum+mop mode switching, create a helper entity as described in [Creating a Cleaning Mode Helper](#creating-a-cleaning-mode-helper-roborock--others).
+**Cleaning mode:** Since Home Assistant 2026.8 the Roborock integration exposes a `Cleaning mode` select (options like `vacuum`, `mop`, `vac_and_mop`). HAMH detects it when its entity ID contains `cleaning_mode`, otherwise set it as the Cleaning Mode Entity. On older Home Assistant versions, create a helper entity as described in [Creating a Cleaning Mode Helper](#creating-a-cleaning-mode-helper-roborock--others).
+
+:::note
+HAMH now reads `vac_and_mop` as Vacuum & Mop. Before, it was read as mop only. On a Roborock that also offers `mop`, Apple Home's Mop mode and the water intensity modes now start mop only (no suction) instead of vacuum and mop, a separate Vacuum & Mop mode appears, and the current mode shows Vacuum & Mop while the robot runs `vac_and_mop`.
+:::
 
 #### Fallback: Manual Button Entity Mapping
 

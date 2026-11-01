@@ -14,7 +14,10 @@ const fan = ["quiet", "balanced", "turbo", "max", "gentle"];
 const water = ["low", "medium", "high"];
 const combined = ["vacuum", "vac_and_mop"];
 
-function fixture(options = combined) {
+function fixture(
+  options = combined,
+  cleanState = options.includes("mop") ? "mop" : "vac_and_mop",
+) {
   const actions: (HomeAssistantAction | undefined)[] = [];
   const entity: HomeAssistantEntityState<{ fan_speed: string }> = {
     entity_id: "vacuum.robot",
@@ -26,7 +29,7 @@ function fixture(options = combined) {
   };
   const states = {
     "select.clean_mode": {
-      state: options.includes("mop") ? "mop" : "vac_and_mop",
+      state: cleanState,
       attributes: { options },
     },
     "select.water": {
@@ -134,5 +137,26 @@ describe("combined-only cleaning modes", () => {
     const { agent, actions } = fixture(options);
     createCleanModeConfig(fan, water, options).setCleanMode(50, agent);
     expect(actions[0]?.data).toEqual({ option: "mop" });
+  });
+
+  it("splits Roborock vac_and_mop from mop on the HA cleaning mode select", () => {
+    const options = ["vacuum", "vac_and_mop", "mop", "custom", "smart_mode"];
+    const modes = buildSupportedModes(fan, water, options);
+    expect(modes.find((mode) => mode.mode === 1)?.label).toBe("Vacuum & Mop");
+    for (const mode of [2, 50]) {
+      const { agent, actions } = fixture(options);
+      const action = createCleanModeConfig(fan, water, options).setCleanMode(
+        mode,
+        agent,
+      );
+      const cleanAction = [...actions, action].find(
+        (item) => item?.target === "select.clean_mode",
+      );
+      expect(cleanAction?.data).toEqual({ option: "mop" });
+    }
+    const { agent, entity } = fixture(options, "vac_and_mop");
+    expect(
+      createCleanModeConfig(fan, water, options).getCurrentMode(entity, agent),
+    ).toBe(1);
   });
 });
