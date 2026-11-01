@@ -218,14 +218,19 @@ ambiguous choices, this mapping selects one automatic representative per tag:
 | Automatic | auto, then balanced, then normal, otherwise the first matching alias |
 | Max | max_plus, then max+, max, turbo, otherwise the first matching strong alias |
 
-Only one automatic fan mode receives each intensity tag, regardless of the
-order or presence of additional off/custom options. Mode IDs and all base
-Vacuum tags remain advertised, so a reported Turbo/Gentle mode stays valid.
-Those aliases are not claimed to remain individually selectable in Apple Home;
-a physical Home UI check of their visibility has not been performed.
-Explicit `customFanSpeedTags` reserve their bucket before automatic assignment;
-multiple explicitly duplicated tags are preserved as configured. Use an override
-to choose which speed represents a native Home intensity bucket.
+Only one fan speed gets each intensity tag, whatever the order of the list or
+extra off/custom options. All fan speeds keep their mode and the Vacuum tag, so
+the current mode is still reported when the robot runs one of the others (for
+example Turbo or Gentle). Apple Home may not offer those other speeds as a
+choice.
+
+:::note
+Earlier versions gave every matching speed the tag. Some speeds now lose it, for
+example Dreame `strong` (Max goes to `turbo`), Ecovacs and Roborock `max` (Max
+goes to `max_plus`) and Roborock `medium`/`gentle`. A saved Custom Tag Mapping
+now takes its tag away from the automatic match instead of adding a second one.
+Use a Custom Tag Mapping to choose which speed Apple Home uses for a bucket.
+:::
 
 Additional standard tags include **Min (6)** for the lowest available setting
 and **DeepClean (16384)** for a mode optimized for improved cleaning. They are
